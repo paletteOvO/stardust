@@ -1,19 +1,16 @@
-from types import FunctionType
-import inspect
-from functools import wraps
-
-
-"""make life easier"""
+"""
+make life easier
+"""
 
 from .pipe_fn import e
 from .symbol import s
-from .netutil import *
+from .netutil import POST, GET, POST_json, GET_json, POST_data
 from .funcional import flatten
 from .hash import djb2, fnv32a
-from .deco import dispatch, predicate, refine
+from .dispatch import dispatch, predicate, refine, match
+from .case import when, case, otherwise, value
 
 Nothing = s.Nothing
-
 
 def asProperty(obj, name, getter=Nothing, setter=Nothing, default=Nothing):
     """
@@ -95,9 +92,6 @@ def proxying(cls):
     return cls
 
 
-# ==
-
-
 def clearDictNone(d):
     """in-place"""
     for k, v in list(d.items()):
@@ -109,55 +103,3 @@ def clearDictNone(d):
 class Bunch(object):
     def __init__(self, adict):
         self.__dict__.update(adict)
-
-
-class _CaseMatching:
-    def __init__(self, obj):
-        self.pt = []
-        self.obj = obj
-        pass
-
-    def __or__(self, case):
-        self.pt.append(case)
-        return self
-
-    def end(self):
-        for case in self.pt:
-            if isinstance(case.check, FunctionType) and case.check():
-                return case.result()
-            if (
-                self.obj is not None
-                and inspect.isclass(case.check)
-                and isinstance(self.obj, case.check)
-            ):
-                var_lst = case.result.__code__.co_varnames
-                return case.result(**{k: getattr(self.obj, k) for k in var_lst})
-            if self.obj is not None and self.obj == case.check:
-                return case.result()
-        raise Exception()
-
-
-class case:
-    def __init__(self, check):
-        self.check = check
-
-    def __rshift__(self, result):
-        self.result = result
-        return self
-
-
-def when(objOrf, f=None):
-    if f is not None:
-        a = _CaseMatching(objOrf)
-    else:
-        a = _CaseMatching(None)
-        f = objOrf
-    f(a)
-    return a.end()
-
-
-def value(v):
-    return lambda: v
-
-
-otherwise = case(lambda: True)

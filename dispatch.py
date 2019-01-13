@@ -1,6 +1,6 @@
 import inspect
 from functools import wraps, partial
-
+from .typecheck import testMatch
 from .pipe_fn import e
 from .symbol import s
 
@@ -47,7 +47,7 @@ def getFuncArgs(func):
    return getWrapped(func, lambda f: f.__code__.co_varnames)
 
 def getFuncTable(func):
-   # module.functable : Dict[FuncName -> a]; a = Dict[FuncId -> (Filter, ArgsCheck, ResultCheck, Func)]
+   # module.functable : Dict[FuncName -> a]; a = Dict[FuncId -> Cond]
    import sys
    module = sys.modules[getWrapped(func, lambda f: f.__module__)]
 
@@ -83,12 +83,11 @@ def genTypeTable(kwargs):
    return type_table
 
 def callWrapper(func):
+   func_table = getFuncTable(func) # : Dict[FuncId -> Cond]
    def call(*args, **kwargs):
-      func_table = getFuncTable(func) # : Dict[FuncId -> Cond]
       for cond in func_table.values():
          if cond.filter(args, kwargs): # for dispatch, predicate
             cond.argsCheck(args, kwargs) # for refine, it should throw exception or do nothing
-            print(cond.func)
             res = cond.func(*args, **kwargs)
             cond.resultCheck(res) # for refine, it should throw exception or do nothing
             return res
@@ -98,8 +97,6 @@ def callWrapper(func):
 
 # type check, multi dispatch
 def dispatch(func):
-   func_table = getFuncTable(func) # : Dict[FuncId -> [Cond]]
-
    expected_type = getFuncAnno(func)
    var_lst = getFuncArgs(func)
 
@@ -123,6 +120,22 @@ def dispatch(func):
 
 def predicate(check_func):
    return partial(_predicate0, check_func)
+
+def match(*args, **kwargs):
+   return partial(_match0, args, kwargs)
+
+def _match0(expected_args, expected_kwargs, func):
+   var_lst = getFuncArgs(func)
+
+   def _matchFilter(args, kwargs):
+      if not is_suitable(func, args, kwargs):
+         return False
+
+      return testMatch(expected_args, args) and testMatch(expected_kwargs, kwargs)
+
+   getFuncCond(func).addFilter(_matchFilter)
+
+   return callWrapper(func)
 
 def _predicate0(check_func, func):
    var_lst = getFuncArgs(func)

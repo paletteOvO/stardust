@@ -7,6 +7,8 @@ class Symbol():
       return f"Symbol<{self.name}>"
    def __getattr__(self, name):
       return self.__class__(self.name + "." + name)
+   def __hash__(self):
+      return hash(repr(self))
 
 class s():
    def __init__(self, symCls):
