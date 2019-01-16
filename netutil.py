@@ -4,7 +4,6 @@ from urllib.request import Request, urlopen
 import json
 
 from pipe_fn import e
-from .symbol import s
 
 def POST(url, headers=dict(), data=dict()):
    request = Request(url, urlencode(data).encode())

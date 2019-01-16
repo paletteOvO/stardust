@@ -1,3 +1,5 @@
+from types import FunctionType
+
 class _CaseMatching:
     def __init__(self, obj):
         self.pt = []
