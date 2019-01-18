@@ -1,4 +1,5 @@
 from types import FunctionType
+import inspect
 
 class _CaseMatching:
     def __init__(self, obj):
