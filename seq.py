@@ -36,24 +36,4 @@ class Seq():
    def foldl1(self, f):
       return self.foldl(f, self._i.__next__())
 
-   def foldr(self, f, default=Nothing):
-      if default == Nothing:
-         [1, 2]
-         f(1, 2)
-
-         [1, 2, 3]
-         f(1, f(2, 3))
-
-         [1, 2, 3]
-         f(f(1, 2), 3)
-
-         # foldl' f [] init = init
-         # foldl' f [x:xs] init = foldl' f xs (f init x)
-
-         # foldl f [x:y:[]] = f x y
-         # foldl f [x:y:xs] = foldl f (f x y) : xs
-
-      else:
-         right = default
-
 seq = Seq
