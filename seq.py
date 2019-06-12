@@ -24,7 +24,6 @@ class Seq():
 
    def foldl(self, f, default):
       left = default
-
       while True:
          try:
             left = f(left, self._i.__next__())
