@@ -13,6 +13,12 @@ class Seq():
    def map(self, f):
       return Seq(f(i) for i in self._i)
 
+   def take(self, n):
+      l = []
+      for i in range(0, n):
+         l.append(self.__next__())
+      return l
+
    def sum(self):
       return
 
@@ -34,5 +40,3 @@ class Seq():
 
    def foldl1(self, f):
       return self.foldl(f, self._i.__next__())
-
-seq = Seq
