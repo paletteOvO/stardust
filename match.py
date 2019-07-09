@@ -29,16 +29,13 @@ class _Matchable():
 class _Patternable():
 
    def __init__(self, name, matchable):
-      self.name = name
-      self.matchable = matchable
+      self.__name = name
+      self.__matchable = matchable
 
    def __getitem__(self, params):
       if not isinstance(params, tuple):
          params = (params,)
-      return self.matchable(params)
-
-   def __str__(self):
-      return f"Patternable<{self.name}>"
+      return self.__matchable(params)
 
 
 def _updateResult(result, k, v):
@@ -103,6 +100,7 @@ def matchTuple(self: _Matchable, value):
 
 
 def toMatchable(value):
+   _Mapping = {list: List, tuple: Tuple}
    if type(value) in _Mapping:
       params = tuple(toMatchable(i) for i in value)
       return _Mapping[type(value)].__getitem__(params)
@@ -111,7 +109,7 @@ def toMatchable(value):
 
 
 # :: *args -> (match :: value -> Dict | False)
-def defaultMatch(*args):
+def defaultMatch(args):
 
    def match(self: _Matchable, value):
       # args = ("x", "y", "z")
@@ -119,31 +117,54 @@ def defaultMatch(*args):
       # Class[s.x s.y s.z] -> Tuple[s.x s.y s.z]
       # Tuple[s.x s.y s.z] `match` tuple(x, y, z)
       # value :: object
-      if not isinstance(value, self.__class__):
+      if not isinstance(value, self.base_type):
          return False
       return Tuple.__getitem__(self.params).match(tuple(getattr(value, name) for name in args))
 
    return match
 
 
+def implMatchable(cls, match):
+   setattr(cls, "match", defaultMatch(match) if isinstance(match, tuple) else match)
+   return cls
+
+
 def makePattern(name, cls, match):
    __init__ = lambda self, params: super(self.__class__, self).__init__(name, cls, params)
-   _match = type(f"__Match{name}", (_Matchable,), {
-       "__init__": __init__,
-       "match": defaultMatch(match) if isinstance(match, tuple) else match
-   })
-
-   def __getitem__(self, params):
-      if not isinstance(params, tuple):
-         params = (params,)
-      return _match(params)
-
-   return _Patternable(name, _match)
+   matchCls = type(f"__Match_{name}", (_Matchable,), {"__init__": __init__})
+   implMatchable(matchCls, match)
+   return _Patternable(name, matchCls)
 
 
 List = makePattern("List", list, matchList)
 Tuple = makePattern("Tuple", tuple, matchTuple)
-_Mapping = {list: List, tuple: Tuple}
+
+
+def dataclass(name, *data):
+
+   def __init__(self, *args, **kwargs):
+      if len(args) != len(data):
+         raise TypeError()
+      for k, v in zip(data, args):
+         setattr(self, k, v)
+
+   target = type(name, (), {"__init__": __init__})
+
+   def __call__(self, *args, **kwargs):
+      return target(*args, **kwargs)
+
+   x = type(name, (_Patternable,), {"__call__": __call__})
+
+   __init__ = lambda self, params: super(self.__class__, self).__init__(name, target, params)
+   matchCls = type(f"__Match_{name}", (_Matchable,), {"__init__": __init__})
+   implMatchable(matchCls, tuple(data))
+
+   return x(name, matchCls)
+
+
+Just = dataclass("Just", "a")
+# Just("") -> object
+# Just[s.x] -> matchable
 
 if __name__ == "__main__":
    from symbol import s
@@ -178,3 +199,5 @@ if __name__ == "__main__":
    assert List[(s.x, s.ys)].match([1, 2, 3]) == {s.x: 1, s.ys: [2, 3]}
    assert List[(s.x, s.y, s.z, s._)].match([1, 2, 3]) == {s.x: 1, s.y: 2, s.z: 3}
    assert List[(s.x, s.y, s.z, s.a)].match([1, 2, 3]) == {s.x: 1, s.y: 2, s.z: 3, s.a: []}
+
+   print(Just[s.x].match(Just(1)))
