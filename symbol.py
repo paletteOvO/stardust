@@ -1,22 +1,50 @@
 class Symbol():
+
    def __init__(self, name):
-      self.name = name
+      self.__data = {"name": name}
+
    def __eq__(self, other):
-      return other is not None and isinstance(other, self.__class__) and other.name == self.name
+      return other is not None and \
+               isinstance(other, self.__class__) and \
+               other.__data["name"] == self.__data["name"]
+
    def __repr__(self):
-      return f"Symbol<{self.name}>"
-   def __getattr__(self, name):
-      return self.__class__(self.name + "." + name)
+      return f":{self.__data['name']}"
+
+   def __getattr__(self, name, data=False):
+      if data:
+         return self.__data[name]
+      else:
+         return self.__class__(self.__data["name"] + "." + name)
+
    def __hash__(self):
       return hash(repr(self))
 
-class s():
-   def __init__(self, symCls):
-      self.symCls = symCls
-   def __getattr__(self, name):
-      return self.symCls(name)
+   def __str__(self):
+      return repr(self)
 
-s = s(Symbol)
-del Symbol
+
+class s():
+
+   def __init__(self, symbolClass):
+      self.symbolClass = symbolClass
+
+   def __getattr__(self, name):
+      return self.symbolClass(name)
+
+
+_Symbol = Symbol
+s = s(_Symbol)
 
 Nothing = s.Nothing
+
+
+def isSymbol(value):
+   return isinstance(value, _Symbol)
+
+
+def symbolName(symbol):
+   return symbol.__getattr__("name", data=True)
+
+
+del Symbol
