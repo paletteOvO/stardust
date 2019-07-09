@@ -22,8 +22,8 @@ class _Matchable():
       if self.params is None:
          return f"({self.name})"
       else:
-         sParams = " ".join(str(i) for i in self.params)
-         return f"({self.name} {sParams})"
+         s = self.name + " " + " ".join(str(i) for i in self.params)
+         return f"({s})"
 
 
 class _Patternable():
