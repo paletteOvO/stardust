@@ -11,8 +11,8 @@ class Symbol():
    def __repr__(self):
       return f":{self.__data['name']}"
 
-   def __getattr__(self, name, data=False):
-      if data:
+   def __getattr__(self, name, isData=False):
+      if isData:
          return self.__data[name]
       else:
          return self.__class__(self.__data["name"] + "." + name)
@@ -44,7 +44,7 @@ def isSymbol(value):
 
 
 def symbolName(symbol):
-   return symbol.__getattr__("name", data=True)
+   return symbol.__getattr__("name", isData=True)
 
 
 del Symbol
