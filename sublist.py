@@ -5,18 +5,17 @@ class sublist():
       """
       if end is None:
          end = len(lst)
-      self.start = max(start, 0)
-      self.end = min(end, len(lst))
-      self.length = max(end - start, 0)
+      self.start = max(0, min(start, len(lst)))
+      self.end = max(0, min(end, len(lst)))
+      self.length = max(self.end - self.start, 0)
       self.src = lst
 
    def __len__(self):
       return self.length
 
    def __getitem__(self, index):
-      i = index + self.start
-      if i >= self.start and i < self.end:
-         return self.src.__getitem__(i)
+      if 0 <= index < self.length:
+         return self.src.__getitem__(index + self.start)
       else:
          raise IndexError(index)
 
