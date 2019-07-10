@@ -208,6 +208,6 @@ if __name__ == "__main__":
    assert List[(s.x, s.y, s.z, s._)].match([1, 2, 3]) == {s.x: 1, s.y: 2, s.z: 3}
    assert List[(s.x, s.y, s.z, s.a)].match([1, 2, 3]) == {s.x: 1, s.y: 2, s.z: 3, s.a: []}
 
-   # I think they a basically the same thing
+   # I think they are basically the same thing
    print(Just[s._].match(Just(1)) is not False)
    print(Just(1).instanceof(Just))
