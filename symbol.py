@@ -26,25 +26,21 @@ class Symbol():
 
 class s():
 
-   def __init__(self, symbolClass):
-      self.symbolClass = symbolClass
+   def __init__(self, Symbol):
+      self.Symbol = Symbol
 
    def __getattr__(self, name):
-      return self.symbolClass(name)
+      return self.Symbol(name)
 
 
-_Symbol = Symbol
-s = s(_Symbol)
+s = s(Symbol)
 
 Nothing = s.Nothing
 
 
 def isSymbol(value):
-   return isinstance(value, _Symbol)
+   return isinstance(value, Symbol)
 
 
 def symbolName(symbol):
    return symbol.__getattr__("name", isData=True)
-
-
-del Symbol

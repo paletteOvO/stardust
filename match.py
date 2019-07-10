@@ -1,6 +1,6 @@
 from itertools import zip_longest
 from sublist import sublist
-from symbol import s, isSymbol, symbolName
+from symbol import s, isSymbol, symbolName, Symbol
 import sys
 sys.setrecursionlimit(50)
 
@@ -22,7 +22,7 @@ class _Matchable():
       if self.__params is None:
          return f"({self.__name})"
       else:
-         s = self.__name + " " + " ".join(str(i) for i in self.__name)
+         s = self.__name + " " + " ".join(str(i) for i in self.__params)
          return f"({s})"
 
 
@@ -34,7 +34,8 @@ class _Patternable():
       self.__type = base_type
 
    def __getitem__(self, params):
-      if not isinstance(params, tuple):
+      # x[a, b, c] x[(a, b, c)] x[[]] x[[a, b, c]] x[()]
+      if not isinstance(params, (tuple,)):
          params = (params,)
       return self.__matchable(self.__name, self.__type, params)
 
@@ -48,18 +49,24 @@ def _updateResult(result, k, v):
 
 
 def matchList(self: _Matchable, value):
+
    if not isinstance(value, list):
       return False
 
-   if len(self._Matchable__params) == 0 and len(value) != 0:
-      return False
+   if len(self._Matchable__params) == 0:
+      return {} if len(value) == 0 else False
 
    head = sublist(self._Matchable__params, 0, len(self._Matchable__params) - 1)
-   tail = sublist(self._Matchable__params, len(self._Matchable__params) - 1, len(self._Matchable__params))[0]
+   tail = self._Matchable__params[-1]
+   if not isinstance(tail, (list, Symbol)):
+      raise SyntaxError("last element of pattern must be list or symbol")
+
+   headValue = sublist(value, 0, len(head))
+   tailValue = sublist(value, len(headValue))
 
    result = {}
 
-   for p, v in zip(head, value):
+   def loop(p, v):
       if isinstance(p, _Matchable):
          matched = p.match(v)
          # matched :: False | Dict
@@ -73,7 +80,19 @@ def matchList(self: _Matchable, value):
       else:
          if p != v:
             return False
-   _updateResult(result, tail, list(sublist(value, len(head))))
+
+   # match head
+   for p, v in zip_longest(head, headValue):
+      if loop(p, v) == False:
+         return False
+   # match tail
+   if isSymbol(tail):
+      _updateResult(result, tail, tailValue)
+   else:
+      for p, v in zip_longest(tail, tailValue):
+         if loop(p, v) == False:
+            return False
+
    return result
 
 
@@ -120,7 +139,8 @@ def defaultMatch(args):
       # value :: object
       if not isinstance(value, self._Matchable__type):
          return False
-      return Tuple.__getitem__(self._Matchable__params).match(tuple(getattr(value, name) for name in args))
+      return Tuple.__getitem__(self._Matchable__params).match(
+          tuple(getattr(value, name) for name in args))
 
    return match
 
@@ -155,8 +175,8 @@ def dataclass(name, *data):
            "__init__":
            __init__,
            "instanceof":
-           lambda self, value: isinstance(self, value._Patternable__type)
-           if isinstance(value, _Patternable) else isinstance(self, value)
+           lambda self, value: isinstance(self, value._Patternable__type) if isinstance(
+               value, _Patternable) else isinstance(self, value)
        })
 
    def __call__(self, *args, **kwargs):
@@ -199,14 +219,32 @@ if __name__ == "__main__":
    assert Tuple[s.x, s.y].match((1,)) == False
    assert Tuple[s.x, s.y].match((1, 2, 3)) == False
 
+   # List[[1, 2, 3]] == List[1, 2, 3, []]
+   assert List[[1, 2, 3]].match([1, 2, 3]) == {}
+   assert List[1, 2, 3, []].match([1, 2, 3]) == {}
+
+   # It should raise syntax error i guess...
+   # assert List[1, 2, 3].match([1, 2, 3]) == False
+
    # Empty List
-   assert List[()].match([1, 2, 3]) == False
+   assert List[[],].match([]) == {}
+   assert List[1, []].match([]) == False
+   assert List[[]].match([1, 2, 3]) == False
+
+   # It doesn't make sense actually
    assert List[()].match([1, 2, 3]) == False
 
+   # value match
+   assert List[[1]].match([1]) == {}
+   assert List[1, 2, 3, []].match([1, 2, 3]) == {}
+
    # Other
-   assert List[(s.x, s.ys)].match([1, 2, 3]) == {s.x: 1, s.ys: [2, 3]}
+   assert List[s.x, s.ys].match([1, 2, 3]) == {s.x: 1, s.ys: [2, 3]}
    assert List[(s.x, s.y, s.z, s._)].match([1, 2, 3]) == {s.x: 1, s.y: 2, s.z: 3}
    assert List[(s.x, s.y, s.z, s.a)].match([1, 2, 3]) == {s.x: 1, s.y: 2, s.z: 3, s.a: []}
+
+   # not match
+   assert List[[s.x, s.y, s.z, 1]].match([1, 2, 3]) == False
 
    # I think they are basically the same thing
    print(Just[s._].match(Just(1)) is not False)
