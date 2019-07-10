@@ -14,28 +14,29 @@ sys.setrecursionlimit(50)
 class _Matchable():
 
    def __init__(self, name, base_type, params):
-      self.params = params
-      self.name = name
-      self.base_type = base_type
+      self.__params = params
+      self.__name = name
+      self.__type = base_type
 
    def __str__(self):
-      if self.params is None:
-         return f"({self.name})"
+      if self.__params is None:
+         return f"({self.__name})"
       else:
-         s = self.name + " " + " ".join(str(i) for i in self.params)
+         s = self.__name + " " + " ".join(str(i) for i in self.__name)
          return f"({s})"
 
 
 class _Patternable():
 
-   def __init__(self, name, matchable):
+   def __init__(self, name, base_type, matchable):
       self.__name = name
       self.__matchable = matchable
+      self.__type = base_type
 
    def __getitem__(self, params):
       if not isinstance(params, tuple):
          params = (params,)
-      return self.__matchable(params)
+      return self.__matchable(self.__name, self.__type, params)
 
 
 def _updateResult(result, k, v):
@@ -50,11 +51,11 @@ def matchList(self: _Matchable, value):
    if not isinstance(value, list):
       return False
 
-   if len(self.params) == 0 and len(value) != 0:
+   if len(self._Matchable__params) == 0 and len(value) != 0:
       return False
 
-   head = sublist(self.params, 0, len(self.params) - 1)
-   tail = sublist(self.params, len(self.params) - 1, len(self.params))[0]
+   head = sublist(self._Matchable__params, 0, len(self._Matchable__params) - 1)
+   tail = sublist(self._Matchable__params, len(self._Matchable__params) - 1, len(self._Matchable__params))[0]
 
    result = {}
 
@@ -79,10 +80,10 @@ def matchList(self: _Matchable, value):
 def matchTuple(self: _Matchable, value):
    if not isinstance(value, tuple):
       return False
-   if len(self.params) != len(value):
+   if len(self._Matchable__params) != len(value):
       return False
    result = {}
-   for p, v in zip(self.params, value):
+   for p, v in zip(self._Matchable__params, value):
       if isinstance(p, _Matchable):
          matched = p.match(v)
          # matched :: False | Dict
@@ -117,9 +118,9 @@ def defaultMatch(args):
       # Class[s.x s.y s.z] -> Tuple[s.x s.y s.z]
       # Tuple[s.x s.y s.z] `match` tuple(x, y, z)
       # value :: object
-      if not isinstance(value, self.base_type):
+      if not isinstance(value, self._Matchable__type):
          return False
-      return Tuple.__getitem__(self.params).match(tuple(getattr(value, name) for name in args))
+      return Tuple.__getitem__(self._Matchable__params).match(tuple(getattr(value, name) for name in args))
 
    return match
 
@@ -130,10 +131,11 @@ def implMatchable(cls, match):
 
 
 def makePattern(name, cls, match):
-   __init__ = lambda self, params: super(self.__class__, self).__init__(name, cls, params)
+   __init__ = lambda self, name, base_type, params: super(self.__class__, self).__init__(
+       name, cls, params)
    matchCls = type(f"__Match_{name}", (_Matchable,), {"__init__": __init__})
    implMatchable(matchCls, match)
-   return _Patternable(name, matchCls)
+   return _Patternable(name, cls, matchCls)
 
 
 List = makePattern("List", list, matchList)
@@ -148,18 +150,24 @@ def dataclass(name, *data):
       for k, v in zip(data, args):
          setattr(self, k, v)
 
-   target = type(name, (), {"__init__": __init__})
+   target = type(
+       name, (), {
+           "__init__":
+           __init__,
+           "instanceof":
+           lambda self, value: isinstance(self, value._Patternable__type)
+           if isinstance(value, _Patternable) else isinstance(self, value)
+       })
 
    def __call__(self, *args, **kwargs):
       return target(*args, **kwargs)
 
-   x = type(name, (_Patternable,), {"__call__": __call__})
+   x: _Patternable = type(name, (_Patternable,), {"__call__": __call__})
 
-   __init__ = lambda self, params: super(self.__class__, self).__init__(name, target, params)
-   matchCls = type(f"__Match_{name}", (_Matchable,), {"__init__": __init__})
+   matchCls = type(f"__Match_{name}", (_Matchable,), {})
    implMatchable(matchCls, tuple(data))
-
-   return x(name, matchCls)
+   ret = x(name, target, matchCls)
+   return ret
 
 
 Just = dataclass("Just", "a")
@@ -200,4 +208,6 @@ if __name__ == "__main__":
    assert List[(s.x, s.y, s.z, s._)].match([1, 2, 3]) == {s.x: 1, s.y: 2, s.z: 3}
    assert List[(s.x, s.y, s.z, s.a)].match([1, 2, 3]) == {s.x: 1, s.y: 2, s.z: 3, s.a: []}
 
-   print(Just[s.x].match(Just(1)))
+   # I think they a basically the same thing
+   print(Just[s._].match(Just(1)) is not False)
+   print(Just(1).instanceof(Just))
