@@ -30,7 +30,7 @@ def main():
       ) == 3
 
    assert when("abc", lambda s: s
-      | case("Hello") >> value(1)
-      | case("abc") >> value(2)
+      | value("Hello") >> value(1)
+      | value("abc") >> value(2)
       | otherwise >> value(3)
       ) == 2
