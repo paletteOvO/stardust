@@ -7,10 +7,11 @@ class sublist():
          end = len(lst)
       self.start = max(start, 0)
       self.end = min(end, len(lst))
+      self.length = max(end - start, 0)
       self.src = lst
 
    def __len__(self):
-      return self.end - self.start
+      return self.length
 
    def __getitem__(self, index):
       i = index + self.start
