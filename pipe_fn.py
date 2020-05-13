@@ -15,47 +15,51 @@ def and_then(*f):
 
 class Pipe:
 
-   def __init__(self, f, args, kwargs, f_continue: tuple = None):
+   def __init__(self, f, l_args, r_args, kwargs, f_continue: tuple = None):
       if isinstance(f, str):
-         name = f
-         f = lambda l, *a, **kw: getattr(l, name)(*a, **kw)
+         self.as_instance = True
+      else:
+         update_wrapper(self, f)
+         self.as_instance = False
+
       self.f = f
       self.f_continue = f_continue
-      self.args = args
+      self.l_args = l_args
+      self.r_args = r_args
       self.kwargs = kwargs
-      update_wrapper(self, f)
 
    def __truediv__(self, other):
-      return Pipe(other, self.args, self.kwargs)
+      return Pipe(other, self.l_args, self.r_args, self.kwargs)
+
+   def __getattr__(self, name):
+      return Pipe(name, self.l_args, self.r_args, self.kwargs)
 
    def __pow__(self, kwargs):
       kwargs.update(self.kwargs)
-      return Pipe(self.f, self.args, kwargs)
+      return Pipe(self.f, self.l_args, self.r_args, self.kwargs)
 
    def __mul__(self, args):
       if not isinstance(args, tuple):
-         args = tuple(args)
-      return Pipe(self.f, self.args + args, self.kwargs)
+         args = (args,)
+      return Pipe(self.f, self.l_args, self.r_args + args, self.kwargs)
+
+   def __matmul__(self, args):
+      if not isinstance(args, tuple):
+         args = (args,)
+      return Pipe(self.f, self.l_args + args, self.r_args, self.kwargs)
 
    def __call__(self, left):
-      if not self.f_continue:
-         return self.f(left, *self.args, **self.kwargs)
+      if isinstance(self.f, str):
+         v = getattr(left, self.f)(*self.l_args, *self.r_args, **self.kwargs)
       else:
-         return reduce(pipe_call, self.f_continue, self.f(left, *self.args, **self.kwargs))
-
-   def __matmul__(self, other):
-      return Pipe(self.f, self.args + (other,), self.kwargs)
+         v = self.f(*self.l_args, left, *self.r_args, **self.kwargs)
+      if not self.f_continue:
+         return v
+      else:
+         return reduce(pipe_call, self.f_continue, v)
 
    def __ror__(self, left):
       return self(left)
 
-   def __add__(self, then):
-      if not callable(then):
-         raise ValueError('`callable` expected, but get a `{}` instead.'.format(then.__class__))
-      if not self.f_continue:
-         return Pipe(self.f, self.args, self.kwargs, (then,))
-      else:
-         return Pipe(self.f, self.args, self.kwargs, self.f_continue + (then,))
 
-
-infix = e = Pipe(lambda x: x, (), dict())
+e = Pipe(lambda x: x, (), (), dict())
