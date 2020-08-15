@@ -5,7 +5,7 @@ make life easier
 from .pipe_fn import e
 from .symbol import s
 from .netutil import POST, GET, POST_json, GET_json, POST_data
-from .funcional import flatten
+from .functional import flatten
 from .hash import djb2, fnv32a
 from .dispatch import dispatch, predicate, refine, match
 from .case import when, case, otherwise, value
@@ -103,5 +103,3 @@ def clearDictNone(d):
 class Bunch(object):
     def __init__(self, adict):
         self.__dict__.update(adict)
-
-
