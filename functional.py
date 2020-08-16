@@ -15,3 +15,7 @@ def take(n, it):
       yield k
       i += 1
    return
+
+def begin(*args):
+   if args:
+      return args[-1]
