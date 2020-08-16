@@ -3,7 +3,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 import json
 
-from pipe_fn import e
+from .pipe_fn import e
 
 def POST(url, headers=dict(), data=dict()):
    request = Request(url, urlencode(data).encode())

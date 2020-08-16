@@ -1,6 +1,6 @@
 import inspect
 from functools import wraps, partial
-from pipe_fn import e
+from .pipe_fn import e
 from .symbol import s
 
 _t = lambda *args, **kwargs: True
