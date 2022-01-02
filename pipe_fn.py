@@ -36,7 +36,7 @@ class Pipe:
 
    def __pow__(self, kwargs):
       kwargs.update(self.kwargs)
-      return Pipe(self.f, self.l_args, self.r_args, self.kwargs)
+      return Pipe(self.f, self.l_args, self.r_args, kwargs)
 
    def __mul__(self, args):
       if not isinstance(args, tuple):
